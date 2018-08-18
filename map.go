@@ -142,3 +142,39 @@ func (m *Map) evict() {
 		m.evictN(len(m.innerMap) - m.sizeLimit)
 	}
 }
+
+// Evict exports the ability to trigger eviction that would be otherwise reactive
+// to Add.
+func (m *Map) Evict() {
+	m.evict()
+}
+
+// ActiveEviction triggers eviction every ageLimit
+func (m *Map) ActiveEviction() {
+	go func() {
+		if m.ageLimit == 0 {
+			return
+		}
+		<-time.After(m.ageLimit)
+		m.evict()
+
+	}()
+}
+
+// ChangeAgeLimit sets a new limit for the lifetime of items in the map, 0 disables limit.
+func (m *Map) ChangeAgeLimit(t time.Duration) {
+	m.ageLimit = t
+	if t > 0 {
+		m.evict()
+	}
+}
+
+// ChangeSizeLimit sets a new limit for the amount of items in the map, 0 disables limit.
+// Smaller size will trigger eviction.
+func (m *Map) ChangeSizeLimit(s int) {
+	oldSize := m.sizeLimit
+	m.sizeLimit = s
+	if s < oldSize && s > 0 {
+		m.evict()
+	}
+}
